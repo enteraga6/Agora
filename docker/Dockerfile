@@ -47,9 +47,9 @@ RUN (cd /usr/src/gtest && cmake . && make && mv libg* /usr/lib/)
 
 
 # Build and install armadillo
-RUN wget http://sourceforge.net/projects/arma/files/armadillo-9.300.2.tar.xz
-RUN tar xf armadillo-9.300.2.tar.xz
-RUN (cd armadillo-9.300.2; cmake .; make -j8; make install)
+RUN wget https://sourceforge.net/projects/arma/files/armadillo-11.1.1.tar.xz
+RUN tar xf armadillo-11.1.1.tar.xz
+RUN (cd armadillo-11.1.1; cmake .; make -j8; make install)
 RUN rm -rf armadillo*
 
 
@@ -61,7 +61,7 @@ RUN ( \
     apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB; \
     rm GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB; \
     sh -c 'echo deb https://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'; \
-)
+    )
 RUN apt-get update && apt-get install -y intel-mkl-64bit-2020.0-088
 
 
@@ -76,7 +76,7 @@ RUN ( \
     make -j8; \
     make install; \
     ldconfig; \
-)
+    )
 
 # Install Mellanox OFED Infiniband driver (unnecessary due to upstreamed drivers)
 # RUN ( \
