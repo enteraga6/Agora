@@ -1,4 +1,4 @@
-### This dockerfile sets up an Ubuntu 18.04 environment from scratch 
+### This dockerfile sets up an Ubuntu 20.04 environment from scratch 
 ### that is sufficient to *run* Agora (but not to build it).
 
 ### Note: Dockerfile best practices include:
@@ -6,7 +6,7 @@
 ###  * Always use "apt-get" and not "apt", because "apt" is for an interactive CLI view.
 ###  * Always use "apt-get install -y" to ensure that "Yes" is auto-chosen for installation.
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 LABEL author=t-keboo@microsoft.com
 
 
@@ -33,11 +33,11 @@ RUN apt-get -y install -y \
     libblas-dev \
     libboost-all-dev \
     # doxygen \
-    nlohmann-json-dev \
+    nlohmann-json3-dev \
     python-numpy \
-    python-pyqt5 \
+    # python-pyqt5 \ needed for libpython-dev which runs python 2.7 but 20.04 wants python 3
     libnuma-dev \
-    libpython-dev \
+    python3-dev \
     swig
 
 
