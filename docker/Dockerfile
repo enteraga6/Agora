@@ -1,74 +1,67 @@
-### This dockerfile sets up an Ubuntu 18.04 environment from scratch 
-### that is sufficient to *run* Agora (but not to build it).
+### This dockerfile sets up an Ubuntu 20.04 environment from scratch 
 
-### Note: Dockerfile best practices include:
-###  * Combine apt-get update and install into the same RUN line.
-###  * Always use "apt-get" and not "apt", because "apt" is for an interactive CLI view.
-###  * Always use "apt-get install -y" to ensure that "Yes" is auto-chosen for installation.
-
-FROM ubuntu:18.04
-LABEL author=t-keboo@microsoft.com
-
+FROM ubuntu:20.04
 
 # Basic set up for ubuntu image
-# Remove some warnings about deb pkg manager
-# See the following links:
-# * https://github.com/phusion/baseimage-docker/issues/58
-# * https://github.com/phusion/baseimage-docker/issues/319#issuecomment-245857919
 ENV DEBIAN_FRONTEND noninteractive
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends apt-utils gnupg
-# RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # Just for convenience purposes
-RUN apt-get install -y vim gdb
+RUN apt-get install -y nano vim gdb
 
 # Required for downloading and building the source packages below
 RUN apt-get -y install -y g++ cmake make wget git
 
-# Needed to build and run Agora. 
-# Currently I'm not sure if *all* of these are needed to *run* Agora, but some are. 
-RUN apt-get -y install -y \
-    libgflags-dev \
-    liblapack-dev \
-    libblas-dev \
-    libboost-all-dev \
-    # doxygen \
-    nlohmann-json-dev \
-    python-numpy \
-    python-pyqt5 \
-    libnuma-dev \
-    libpython-dev \
-    swig
+RUN apt update
+RUN apt upgrade -y
 
+RUN (apt-get -y install -y \
+    git cmake build-essential g++ gcc \
+    libgtest-dev libgflags-dev libboost-dev libfftw3-dev \ 
+    doxygen swig graphviz qtbase5-dev libcanberra-gtk-module \
+    liblapack-dev libopenblas-base libopenblas-dev \ 
+    python3 python3-dev libpython3-dev python3-distutils python3-dbg python3-pip python3-numpy python3-matplotlib python3-h5py python3-scipy python3-testresources python3-sip-dev python-is-python3 \
+    software-properties-common avahi-daemon libavahi-client-dev \
+    liblapack3 liblapack-doc liblapack-dev libsuperlu-dev libsuperlu-doc libsuperlu5 libarpack++2c2a libarpack2 libarpack2-dev libatlas-base-dev libatlas3-base libhdf5-dev \
+    )
+
+#Remove Warnings
+RUN pip3 install --upgrade secretstorage
+
+#build gtest=
+# RUN cd /usr/src/gtest
+# RUN cmake CMakeLists.txt
+# RUN make
 
 # Install gtest and gflags
 RUN apt-get install -y libgtest-dev
-RUN (cd /usr/src/gtest && cmake . && make && mv libg* /usr/lib/)
+RUN cd /usr/src/gtest && \
+    cmake . && \ 
+    make && \
+    mv lib/libgtest* /usr/lib/
 
+#Install inteloneAPI
+
+# use wget to fetch the Intel repository public key
+RUN cd /tmp
+RUN wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+# add to your apt sources keyring so that archives signed with this key will be trusted.
+RUN apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+# remove the public key
+RUN rm GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+
+RUN add-apt-repository "deb https://apt.repos.intel.com/oneapi all main"
+RUN apt install -y intel-hpckit
 
 # Build and install armadillo
-RUN wget http://sourceforge.net/projects/arma/files/armadillo-9.300.2.tar.xz
-RUN tar xf armadillo-9.300.2.tar.xz
-RUN (cd armadillo-9.300.2; cmake .; make -j8; make install)
+RUN wget https://sourceforge.net/projects/arma/files/armadillo-11.1.1.tar.xz
+RUN tar xf armadillo-11.1.1.tar.xz
+RUN (cd armadillo-11.1.1; cmake .; make -j8; make install)
 RUN rm -rf armadillo*
-
-
-# Set up Intel MKL
-RUN apt-get install -y apt-transport-https ca-certificates
-RUN ( \
-    cd /tmp; \
-    wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB; \
-    apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB; \
-    rm GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB; \
-    sh -c 'echo deb https://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list'; \
-)
-RUN apt-get update && apt-get install -y intel-mkl-64bit-2020.0-088
-
 
 # Set up SoapySDR
 RUN ( \
-    cd `mktemp -d`; \
-    git clone --depth=1 https://github.com/pothosware/SoapySDR.git; \
+    git clone --branch soapy-sdr-0.8.1 --depth 1 --single-branch https://github.com/pothosware/SoapySDR.git;\
     cd SoapySDR; \
     mkdir build; \
     cd build; \
@@ -76,46 +69,110 @@ RUN ( \
     make -j8; \
     make install; \
     ldconfig; \
-)
+    )
 
-# Install Mellanox OFED Infiniband driver (unnecessary due to upstreamed drivers)
-# RUN ( \
-#     apt-get install -y linux-headers-4.15.0-111-generic; \
-#     cd /tmp; \
-#     wget http://content.mellanox.com/ofed/MLNX_OFED-5.1-0.6.6.0/MLNX_OFED_LINUX-5.1-0.6.6.0-ubuntu18.04-x86_64.tgz; \
-#     tar zxvf MLNX_OFED_LINUX-5.1-0.6.6.0-ubuntu18.04-x86_64.tgz; \
-#     echo "deb file:/tmp/MLNX_OFED_LINUX-5.1-0.6.6.0-ubuntu18.04-x86_64/DEBS ./" > /etc/apt/sources.list.d/mlnx_ofed.list; \
-#     wget -qO - http://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox | apt-key add - ; \
-#     apt-get update; \
-#     apt-get install -y mlnx-ofed-all; \
-#     apt-get install -y mlnx-ofed-dpdk-upstream-libs; \
-# )
-# Add support for Infiniband, Mellanox verbs, rdma, etc
-RUN apt-get install -y libibverbs-dev libibverbs1 rdma-core ibverbs-utils libibumad3 libibumad-dev libibmad-dev libibmad5 libibnetdisc5
+#SoapyRemote
+RUN ( \
+    git clone --branch soapy-remote-0.5.2 --depth 1 --single-branch https://github.com/pothosware/SoapyRemote.git; \
+    cd SoapyRemote; \
+    mkdir build; \
+    cd build; \
+    cmake ..; \
+    make -j8; \
+    make install; \
+    ldconfig; \
+    )
+
+#Iris drivers
+RUN ( \
+    git clone --branch rx-shorttimeout --depth 1 --single-branch https://github.com/Agora-wireless/sklk-soapyiris.git; \
+    cd sklk-soapyiris; \
+    mkdir -p build; \
+    cd build; \
+    cmake ..;\
+    make -j`nproc`;\
+    make install;\
+    cd ../..;\
+    ldconfig; \
+    )
+
+#RUN source /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"
+
+#Enable the soapy sdr server for more robust device detection
+RUN systemctl enable SoapySDRServer
+
+# Install FlexRAN FEC SDK
+RUN (cd /opt/  \
+    mkdir FlexRAN-FEC-SDK-19-04)
+
+#Have to be in docker folder for it to work
+COPY ./FlexRAN-FEC-SDK-19-04 ./opt/FlexRAN-FEC-SDK-19-04
+RUN (cd /opt/ \
+    chmod -R a+rwX FlexRAN-FEC-SDK-19-04/ \
+    cd FlexRAN-FEC-SDK-19-04 \
+    rm -rf .git \
+    rm .gitignore \
+    cd sdk \
+    ./create-makefiles-linux.sh \
+    cd build-avx512-icc \
+    make -j \
+    make install \
+    make clean \
+    ldconfig \
+    )
+
+# Install FlexRAN FEC SDK
+RUN cd /opt/FlexRAN-FEC-SDK-19-04/sdk
+RUN rm -rf build-avx*
+
+# RUN (WIRELESS_SDK_TARGET_ISA="avx512" \
+#     export WIRELESS_SDK_TARGET_ISA \
+#     ./create-makefiles-linux.sh \
+#     cd build-avx512-icc \
+#     make -j \
+#     make install)
+
+# RUN (WIRELESS_SDK_TARGET_ISA="avx2" \
+#     export WIRELESS_SDK_TARGET_ISA \
+#     ./create-makefiles-linux.sh \
+#     cd build-avx2-icc \
+#     make -j )
+
+# RUN ldconfig
+
+# #Make the saopy settings a lower priority
+# RUN mv /usr/local/lib/sysctl.d/SoapySDRServer.conf /usr/local/lib/sysctl.d/98-SoapySDRServer.conf
+# #Ethernet buffer sizes
+# RUN echo -e '# Ethernet transport tuning\n# Socket Rx Buffer Max Size\nnet.core.rmem_max=536870912\n#Socket Send Buffer Max Size\nnet.core.wmem_max=536870912' | sudo tee /etc/sysctl.d/99-agora.conf
+# RUN sysctl --load /etc/sysctl.d/99-agora.conf
+
+# RUN echo -e '#!/usr/bin/bash\nsource /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"' | sudo tee /etc/profile.d/10-inteloneapivars.sh
+# RUN echo -e '#!/usr/bin/bash\nsudo chown -R $(id -u):$(id -g) /scratch/ > /dev/null 2>&1' | sudo tee /etc/profile.d/11-scratchowner.sh
+
+# #Build Agora
+# RUN (cd $SCRATCH/repos/agora \
+#     mkdir build \
+#     cd build \
+#     cmake .. -DUSE_ARGOS=true \
+#     make -j \
+#     cd $SCRATCH \
+#     )
 
 
-# Undo the noninteractive DEBIAN_FRONTEND from the beginning of this file
-ENV DEBIAN_FRONTEND teletype
+# RUN $AGORAREPO = https://github.com/enteraga6/Agora
+# #Clone Agora
+# RUN (git clone --branch develop $AGORAREPO agora || \
+#     { echo "Failed to clone git repository: $AGORAREPO" && exit 1; })
 
 
-# Copy in our relevant build files. ("test" is optional)
-COPY build/   Agora/build/
-COPY data/    Agora/data/
-COPY test/    Agora/test/
-COPY run_*.sh Agora/
+# RUN echo -e 'intelpython=exclude' | tee /opt/intel/oneapi/renew-config.txt
+# RUN echo -e '#!/usr/bin/bash\nsource /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"' | tee /etc/profile.d/10-inteloneapivars.sh
 
-# Copy the FlexRAN files
-COPY FlexRAN-FEC-SDK-19-04/ /opt/
+# # Undo the noninteractive DEBIAN_FRONTEND from the beginning of this file
+# ENV DEBIAN_FRONTEND teletype
 
-# Set up the intel MKL compiler variables (shell environment vars) so that Agora can run.
-# This is only really needed when logging into the container via a remote bash shell and manually running commands.
-# Note that this will NOT take effect if a docker CMD or kubernetes command is used directly.
-RUN echo "source /opt/intel/compilers_and_libraries/linux/bin/compilervars.sh intel64" >> ~/.bashrc
+# # Set up the intel MKL compiler variables (shell environment vars) so that Agora can run.
+# # This is only really needed when logging into the container via a remote bash shell and manually running commands.
+# # Note that this will NOT take effect if a docker CMD or kubernetes command is used directly.
+# RUN echo "source /opt/intel/compilers_and_libraries/linux/bin/compilervars.sh intel64" >> ~/.bashrc
 
-
-# Finally, do something, e.g., run Agora.
-# TODO, e.g., CMD ./build/agora data/tddconfig-sim-ul.json
-
-# This command is for debugging/testing; it makes the container run forever so we can remote into it.
-# It's better to do this using a kubernetes command instead.
-# CMD exec /bin/bash -c "trap : TERM INT; sleep infinity & wait"
