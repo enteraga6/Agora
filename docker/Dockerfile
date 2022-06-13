@@ -9,6 +9,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-ins
 # Just for convenience purposes
 RUN apt-get install -y nano vim gdb
 
+#RUN apt-get -y update && apt-get  install build-essential cmake --no-install-recommends
+
 # Required for downloading and building the source packages below
 RUN apt-get -y install -y g++ cmake make wget git
 
@@ -97,7 +99,9 @@ RUN ( \
     )
 
 #RUN source /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"
-
+RUN echo -e 'intelpython=exclude' | tee /opt/intel/oneapi/renew-config.txt
+RUN . /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"
+RUN echo -e '#!/usr/bin/bash\nsource /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"' | tee /etc/profile.d/10-inteloneapivars.sh
 #Enable the soapy sdr server for more robust device detection
 RUN systemctl enable SoapySDRServer
 
@@ -107,69 +111,68 @@ RUN (cd /opt/  \
 
 #Have to be in docker folder for it to work
 COPY ./FlexRAN-FEC-SDK-19-04 ./opt/FlexRAN-FEC-SDK-19-04
+
 RUN (cd /opt/ \
     chmod -R a+rwX FlexRAN-FEC-SDK-19-04/ \
     cd FlexRAN-FEC-SDK-19-04 \
     rm -rf .git \
-    rm .gitignore \
-    cd sdk \
-    ./create-makefiles-linux.sh \
-    cd build-avx512-icc \
-    make -j \
-    make install \
-    make clean \
-    ldconfig \
-    )
+    rm .gitignore)
 
 # Install FlexRAN FEC SDK
-RUN cd /opt/FlexRAN-FEC-SDK-19-04/sdk
-RUN rm -rf build-avx*
 
-# RUN (WIRELESS_SDK_TARGET_ISA="avx512" \
-#     export WIRELESS_SDK_TARGET_ISA \
-#     ./create-makefiles-linux.sh \
-#     cd build-avx512-icc \
-#     make -j \
+# RUN (WIRELESS_SDK_TARGET_ISA="avx512" && \
+#     export WIRELESS_SDK_TARGET_ISA &&\
+#     cd /opt/FlexRAN-FEC-SDK-19-04/sdk && \
+#     ./create-makefiles-linux.sh && \
+#     cd build-avx512-icc &&\
+#     make -j &&\
 #     make install)
-
-# RUN (WIRELESS_SDK_TARGET_ISA="avx2" \
-#     export WIRELESS_SDK_TARGET_ISA \
-#     ./create-makefiles-linux.sh \
-#     cd build-avx2-icc \
-#     make -j )
+RUN (. /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt" \
+    cd /opt/FlexRAN-FEC-SDK-19-04/sdk \
+    rm -rf build-avx* \ 
+    WIRELESS_SDK_TARGET_ISA="avx2" \
+    export WIRELESS_SDK_TARGET_ISA \
+    . create-makefiles-linux.sh \
+    cd build-avx2-icc \
+    make -j \
+    make install)
 
 # RUN ldconfig
+
+
+# RUN (cd ./agora \
+#     chown ${USER}:${GROUP} . \
+#     chmod 775 . \
+#     mkdir ./agora/build)
+
+#Clone Agora
+RUN (git clone --branch develop https://github.com/enteraga6/Agora agora || \
+    { echo "Failed to clone git repository: https://github.com/enteraga6/Agora" && exit 1; })
+
+#Build Agora
+RUN mkdir /agora/build 
+
+RUN (cd agora \
+    cd build \
+    cmake .. \
+    make -j \
+    )
 
 # #Make the saopy settings a lower priority
 # RUN mv /usr/local/lib/sysctl.d/SoapySDRServer.conf /usr/local/lib/sysctl.d/98-SoapySDRServer.conf
 # #Ethernet buffer sizes
-# RUN echo -e '# Ethernet transport tuning\n# Socket Rx Buffer Max Size\nnet.core.rmem_max=536870912\n#Socket Send Buffer Max Size\nnet.core.wmem_max=536870912' | sudo tee /etc/sysctl.d/99-agora.conf
+# RUN echo -e '# Ethernet transport tuning\n# Socket Rx Buffer Max Size\nnet.core.rmem_max=536870912\n#Socket Send Buffer Max Size\nnet.core.wmem_max=536870912' | tee /etc/sysctl.d/99-agora.conf
 # RUN sysctl --load /etc/sysctl.d/99-agora.conf
 
 # RUN echo -e '#!/usr/bin/bash\nsource /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"' | sudo tee /etc/profile.d/10-inteloneapivars.sh
 # RUN echo -e '#!/usr/bin/bash\nsudo chown -R $(id -u):$(id -g) /scratch/ > /dev/null 2>&1' | sudo tee /etc/profile.d/11-scratchowner.sh
 
-# #Build Agora
-# RUN (cd $SCRATCH/repos/agora \
-#     mkdir build \
-#     cd build \
-#     cmake .. -DUSE_ARGOS=true \
-#     make -j \
-#     cd $SCRATCH \
-#     )
-
-
-# RUN $AGORAREPO = https://github.com/enteraga6/Agora
-# #Clone Agora
-# RUN (git clone --branch develop $AGORAREPO agora || \
-#     { echo "Failed to clone git repository: $AGORAREPO" && exit 1; })
-
 
 # RUN echo -e 'intelpython=exclude' | tee /opt/intel/oneapi/renew-config.txt
 # RUN echo -e '#!/usr/bin/bash\nsource /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"' | tee /etc/profile.d/10-inteloneapivars.sh
 
-# # Undo the noninteractive DEBIAN_FRONTEND from the beginning of this file
-# ENV DEBIAN_FRONTEND teletype
+# Undo the noninteractive DEBIAN_FRONTEND from the beginning of this file
+ENV DEBIAN_FRONTEND teletype
 
 # # Set up the intel MKL compiler variables (shell environment vars) so that Agora can run.
 # # This is only really needed when logging into the container via a remote bash shell and manually running commands.
