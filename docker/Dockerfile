@@ -1,5 +1,5 @@
 ### This dockerfile sets up an Ubuntu 20.04 environment from scratch 
-
+# escape=\
 FROM ubuntu:20.04
 
 # Basic set up for ubuntu image
@@ -99,10 +99,18 @@ RUN ( \
     )
 
 #RUN source /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"
-RUN echo -e 'intelpython=exclude' | tee /opt/intel/oneapi/renew-config.txt
-RUN . /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"
-RUN echo -e '#!/usr/bin/bash\nsource /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"' | tee /etc/profile.d/10-inteloneapivars.sh
-#Enable the soapy sdr server for more robust device detection
+
+
+#RUN echo -e 'intelpython=exclude' | tee /opt/intel/oneapi/renew-config.txt
+# ENTRYPOINT ["echo", "-e", "'intelpython=exclude'", "|", "tee", "/opt/intel/oneapi/renew-config.txt"]
+
+# #RUN . /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"
+# ENTRYPOINT [".", "/opt/intel/oneapi/setvars.sh", " --config="/opt/intel/oneapi/renew-config.txt""]
+
+# ENTRYPOINT ["echo", "-e", "'#!/usr/bin/bash\nsource /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"'", ""]
+# RUN echo -e '#!/usr/bin/bash\nsource /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt"' | tee /etc/profile.d/10-inteloneapivars.sh
+# #Enable the soapy sdr server for more robust device detection
+
 RUN systemctl enable SoapySDRServer
 
 # Install FlexRAN FEC SDK
@@ -127,15 +135,21 @@ RUN (cd /opt/ \
 #     cd build-avx512-icc &&\
 #     make -j &&\
 #     make install)
-RUN (. /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt" \
-    cd /opt/FlexRAN-FEC-SDK-19-04/sdk \
-    rm -rf build-avx* \ 
-    WIRELESS_SDK_TARGET_ISA="avx2" \
-    export WIRELESS_SDK_TARGET_ISA \
-    . create-makefiles-linux.sh \
-    cd build-avx2-icc \
-    make -j \
-    make install)
+
+COPY ./entry_script.sh ./opt
+RUN ["chmod", "+x", "./opt/entry_script.sh"]
+
+ENTRYPOINT ["/bin/bash", "-c", "./opt/entry_script.sh"]
+
+# RUN (. /opt/intel/oneapi/setvars.sh --config="/opt/intel/oneapi/renew-config.txt" \
+#     cd /opt/FlexRAN-FEC-SDK-19-04/sdk \
+#     rm -rf build-avx* \ 
+#     WIRELESS_SDK_TARGET_ISA="avx2" \
+#     export WIRELESS_SDK_TARGET_ISA \
+#     . create-makefiles-linux.sh \
+#     cd build-avx2-icc \
+#     make -j \
+#     make install)
 
 # RUN ldconfig
 
