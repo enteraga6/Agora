@@ -14,4 +14,20 @@ cd build-avx2-icc
 make -j
 make install
 
+cd ..
+cd ..
+cd ..
+cd ..
+
+cd Agora_dir/agora
+mkdir build
+cd build
+cmake ..
+ls
+make -j
+
+cd ..
+
 exec "$@"
+
+/bin/bash
