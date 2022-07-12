@@ -24,7 +24,10 @@ int main(int argc, char **argv)
     char message[] = "Hello Server";
     gflags::ParseCommandLineFlags(&argc, &argv, false);
     UDPClient udp_client;
-    udp_client.Send(FLAGS_server_ip, 8080, (uint8_t*) message, sizeof(message));
+    while(true){
+        udp_client.Send(FLAGS_server_ip, 8080, (uint8_t*) message, sizeof(message));
+    
+    }
     return 0;
 }
 
