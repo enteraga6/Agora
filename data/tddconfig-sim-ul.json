@@ -8,8 +8,8 @@
       "modulation": "64QAM",
       "code_rate": 0.333
     },
-    "bs_server_addr": "127.0.0.1",
-    "bs_rru_addr": "127.0.0.1",
+    "bs_server_addr": "168.6.245.99",
+    "bs_rru_addr": "168.6.245.87",
     "fft_size": 2048,
     "ofdm_data_num": 1200,
     "demul_block_size": 64,
