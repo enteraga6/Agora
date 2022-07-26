@@ -210,8 +210,8 @@ Config::Config(const std::string& jsonfile)
   imbalance_cal_en_ = tdd_conf.value("calibrate_analog", false);
   init_calib_repeat_ = tdd_conf.value("init_calib_repeat", 0);
 
-  bs_server_addr_ = tdd_conf.value("bs_server_addr", "127.0.0.1");
-  bs_rru_addr_ = tdd_conf.value("bs_rru_addr", "127.0.0.1");
+  bs_server_addr_ = tdd_conf.value("bs_server_addr", "168.6.245.99");
+  bs_rru_addr_ = tdd_conf.value("bs_rru_addr", "168.6.245.87");
   ue_server_addr_ = tdd_conf.value("ue_server_addr", "127.0.0.1");
   mac_remote_addr_ = tdd_conf.value("mac_remote_addr", "127.0.0.1");
   bs_server_port_ = tdd_conf.value("bs_server_port", 8000);

@@ -1,6 +1,6 @@
 {
     "bs_radio_num": 8,
-    "ue_radio_num": 8,
+    "ue_radio_num": 1,
     "frame_schedule": [
         "PUUUUUUUUUUUUU"
     ],

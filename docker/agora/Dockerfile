@@ -114,7 +114,7 @@ RUN (cd Agora_dir; \
     git clone --branch develop https://github.com/enteraga6/Agora agora || \
     { echo "Failed to clone git repository: https://github.com/enteraga6/Agora" && exit 1; })
 
-EXPOSE 8000-8007/udp
+EXPOSE 5000-10000/udp
 
 
 # # Install FlexRAN FEC SDK
